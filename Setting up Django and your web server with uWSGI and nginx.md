@@ -1,10 +1,21 @@
-## 用用uWSGI和nginx部署Django Web服务器
+## 用uWSGI和nginx部署Django Web服务器
 
 本教程针对想要设置生产Web服务器的Django用户。它将指导您完成设置Django所需的步骤，以便与uWSGI和nginx完美配合。它涵盖了所有三个组件，提供了完整的Web应用程序和服务器软件堆栈。
 
 Django是一个高级Python Web框架，鼓励快速开发和干净，实用的设计。
 
 nginx（发音为engine-x）是一个免费的，开源的，高性能的HTTP服务器和反向代理，以及一个IMAP / POP3代理服务器。
+
+## 相关概念
+Web服务器面向外部世界。它可以直接从文件系统提供文件（HTML，图像，CSS等）。但是，它不能直接与Django应用程序对话; 它需要运行应用程序的东西，从Web客户端（例如浏览器）提供请求并返回响应。
+
+Web服务器网关接口 - WSGI - 完成这项工作，WSGI是Python标准。
+
+uWSGI是一个WSGI实现。在本教程中，我们将设置uWSGI，以便创建一个Unix套接字，并通过uwsgi协议提供对Web服务器的响应。最后，我们完整的组件堆栈将如下所示：
+
+```the web client <-> the web server <-> the socket <-> uwsgi <-> Django```
+
+
 
 ### 相关软件版本
 ```
@@ -24,6 +35,7 @@ sudo apt upgrade
 ### 安装python环境
 ```
 # 系统自带Python3环境，更新之后可以使用最新版
+
 # 需要安装python3-pip, 再通过pip3安装virtualenv包， 用来创建python3虚拟环境
 sudo apt install python3-pip
 sudo pip3 install virtualenv
@@ -34,12 +46,27 @@ sudo pip3 install virtualenv
 # 为项目创建一个文件夹
 sudo mkdir /home/project_name/
 sudo cd /home/project_name
+
 # 创建虚拟环境
 project_name$ sudo virtualenv -p /usr/bin/python3 venv
+
 # 激活虚拟环境
 project_name$ source venv/bin/activate
+
 # 激活虚拟环境之后，系统会进入虚拟的python环境
 (venv)project_name$
+
 # y要停止使用虚拟环境，可执行命令deactivate
 (venv)project_name$ deactivate
+```
+
+### 安装django, 创建项目
+```
+# 创建并激活虚拟环境之后，就可以安装Django了
+(venv)project_name$ pip install django==2.2
+
+# 创建项目
+(venv)project_name$ django-admin.py startproject www .
+(venv)project_name$ ls
+www venv manage.py
 ```
