@@ -69,4 +69,89 @@ project_name$ source venv/bin/activate
 (venv)project_name$ django-admin.py startproject www .
 (venv)project_name$ ls
 www venv manage.py
+
+# 此时django项目就创建完了，可以查看项目
+(venv)project_name$ python manage.py runserver
 ```
+
+## 安装uWSGI并配置
+### 安装uWSGI
+```
+(venv)project_name$ pip install uwsgi
+```
+### 测试uWSGI
+创建一个uwsgi_test.py 文件，写入以下内容
+```python
+def application(env, start_response):
+    start_response('200 OK', [('Content-Type','text/html')])
+    return [b"Hello Uwsgi"]
+```
+运行uWSGI：
+```
+uwsgi --http :8001 --wsgi-file test.py
+```
+找个浏览器，访问`http://<your ip adress>:8001/`, 如果显示`Hello Uwsgi`, 说明uWSGI正常运行, 以下堆栈有效
+```
+the web client <-> uWSGI <-> Python
+```
+
+## 安装nginx
+### 安装
+```
+sudo apt insatll nginx
+
+# 安装后nginx会自动启动，如果不行请运行以下命令
+sudo /etc/init.d/nginx
+```
+### 配置nginx
+您将需要该uwsgi_params文件，该文件nginx 位于uWSGI发行版的目录中，或者来自 <https://github.com/nginx/nginx/blob/master/conf/uwsgi_params>将其复制到项目目录中.
+
+前往/etc/nginx/目录，查看nginx.conf（nginx基础配置），发现里面有这么两行，意思就是包含conf.d文件夹中所有以conf后缀的配置和site-enabled文件夹中的内容
+```
+include /etc/nginx/conf.d/*.conf;
+include /etc/nginx/sites-enabled/*;
+```
+我们不更改`nginx.conf`基础配置，只需要修改`conf.d`目录下的`conf`文件即可，进入`conf.d`文件夹，修改`default.conf`文件，没有的话就新建一个
+```shell
+# nginx.conf
+
+# the upstream component nginx needs to connect to
+upstream django {
+    # server unix:///path/to/your/mysite/mysite.sock; # for a file socket
+    server 127.0.0.1:8001; # for a web port socket (we'll use this first)
+}
+
+# configuration of the server
+server {
+    # the port your site will be served on
+    listen      8000;
+    # the domain name it will serve for
+    server_name example.com; # substitute your machine's IP address or FQDN
+    charset     utf-8;
+    
+    # nginx log
+    access_log      /var/www/<PROJECT_NAME>/nginx_access.log;
+    error_log       /var/www/<PROJECT_NAME>/nginx_error.log;
+
+    # max upload size
+    client_max_body_size 75M;   # adjust to taste
+
+    # Django media
+    location /media  {
+        alias /path/to/your/mysite/media;  # your Django project's media files - amend as required
+    }
+
+    location /static {
+        alias /path/to/your/mysite/static; # your Django project's static files - amend as required
+    }
+
+    # Finally, send all non-media requests to the Django server.
+    location / {
+        uwsgi_pass  django;
+        include     /path/to/your/mysite/uwsgi_params; # the uwsgi_params file you installed
+    }
+}
+```
+
+
+
