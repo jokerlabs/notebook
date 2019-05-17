@@ -70,9 +70,10 @@ project_name$ source venv/bin/activate
 (venv)project_name$ ls
 www venv manage.py
 
-# 此时django项目就创建完了，可以查看项目
+# 此时django项目就创建完了，可以查看项目，显示Django欢迎界面，说明Django成功运行
 (venv)project_name$ python manage.py runserver
 ```
+
 
 ## 安装uWSGI并配置
 ### 安装uWSGI
@@ -80,7 +81,7 @@ www venv manage.py
 (venv)project_name$ pip install uwsgi
 ```
 ### 测试uWSGI
-创建一个uwsgi_test.py 文件，写入以下内容
+创建一个`uwsgi_test.py` 文件，写入以下内容
 ```python
 def application(env, start_response):
     start_response('200 OK', [('Content-Type','text/html')])
@@ -88,21 +89,34 @@ def application(env, start_response):
 ```
 运行uWSGI：
 ```
-uwsgi --http :8001 --wsgi-file test.py
+uwsgi --http :8001 --wsgi-file uwsgi_test.py
 ```
 找个浏览器，访问`http://<your ip adress>:8001/`, 如果显示`Hello Uwsgi`, 说明uWSGI正常运行, 以下堆栈有效
 ```
 the web client <-> uWSGI <-> Python
 ```
+### 测试你的Django项目
+现在我们希望uWSGI做同样的事情，但是要运行Django站点而不是`uwsgi_test.py`模块
+```
+uwsgi --http :8001 --module www.wsgi
+```
+将浏览器指向服务器：`<你的ip地址>:8001`，如果django页面出现，说明以下堆栈可以正常运行。
+```
+the web client <-> uWSGI <-> Django
+```
+
 
 ## 安装nginx
 ### 安装
 ```
 sudo apt insatll nginx
-
-# 安装后nginx会自动启动，如果不行请运行以下命令
+```
+安装后nginx会自动启动，如果不行请运行以下命令
+```
 sudo /etc/init.d/nginx
 ```
+在浏览器指向服务器：`<你的ip地址>`，显示nginx欢迎界面，表示nginx成功安装并启动
+
 ### 配置nginx
 您将需要该uwsgi_params文件，该文件nginx 位于uWSGI发行版的目录中，或者来自 <https://github.com/nginx/nginx/blob/master/conf/uwsgi_params>将其复制到项目目录中.
 
@@ -152,6 +166,55 @@ server {
     }
 }
 ```
+重启nginx
+```
+sudo /etc/init.d/nginx restart
+```
+### nginx的和uWSGI的测试
+让我们让nginx与“hello world” `uwsgi_test.py`应用程序对话:
+```
+uwsgi --socket :8001 --wsgi-file uwsgi_test.py
+```
+- `socket: 8001`: 使用协议uwsgi，端口8001
+
+在浏览器访问：`<你的ip地址>:8000`，显示Hello Uwsgi说明nginx与uWSGI成功通信，以下堆栈成功：
+```
+the web client <-> the web server <-> the socket <-> uWSGI <-> Python
+```
+### 用uwsgi和nginx运行Django应用程序
+让我们运行我们的Django应用程序：
+```
+uwsgi --socket ：8001 --module www.wsgi
+```
+在浏览器输入：`<你的ip地址>： 8000`， 就可以看到我们的Django页面啦！
+
+### 修改端口 
+http的默认端口:80被nginx的欢迎页面程序所占用，我们先解除80端口占用：
+配置文件目录：'/etc/nginx/sites-enables/', 修改default文件，这个文件是默认加载的配置文件，编辑：
+```
+server {
+	# listen 80 default_server;  ## 这里默认欢迎页面是80端口，把这个端口改成一个不用的端口号
+	# listen [::]:80 default_server;   ## 这里默认欢迎页面是80端口，改成一个不用的端口号
+    listen 80 default_server; 
+	listen [::]:80 default_server; 
+}
+```
+然后修改/etc/nginx/conf.d/default.conf这个我们创建的文件，把端口号改为80
+```
+server {
+    # the port your site will be served on
+    listen      80;
+```
+
+重启nginx，就可以直接用我们的ip地址或者域名访问Django网站了。
+
+## 编写并上传Django项目
+到这里就大功告成了，接下来就是编写我们的Django应用，用ftp工具上传，实现我们想要实现的功能。祝你好运。如果有任何问题，请随时跟我通过电子邮件讨论：
+<xuqjia@163.com>，感谢阅读。
+
+
+
+
 
 
 
